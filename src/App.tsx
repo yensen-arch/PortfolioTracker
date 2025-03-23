@@ -222,18 +222,20 @@ function App() {
         <div className="relative overflow-hidden rounded-xl p-6 mb-8 bg-white/10 backdrop-blur-lg border border-white/30 shadow-lg">
           <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 opacity-80 transition-all duration-500 hover:opacity-100"></div>
 
-          <div className="relative flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-slate-600 drop-shadow-lg">
+          <div className="relative flex flex-col md:flex-row items-center md:items-start justify-between gap-4">
+            <div className="text-center md:text-left">
+              <h2 className="text-lg md:text-xl font-semibold text-slate-600 drop-shadow-lg">
                 Would you like to have the same portfolio? 🚀
               </h2>
-              <p className="text-slate-600 drop-shadow">
+              <p className="text-sm md:text-base text-slate-600 drop-shadow">
                 Sign up, clone target allocations of this portfolio and start
                 following the strategy
               </p>
             </div>
-            <button className="relative px-6 py-2 bg-white/20 text-white font-semibold rounded-lg shadow-md hover:bg-white/30 transition-all duration-300 overflow-hidden group">
-              <span className="relative z-10 text-sm text-white">Start</span>
+            <button className="relative px-6 py-2 text-sm md:text-base bg-white/20 text-white font-semibold rounded-lg shadow-md hover:bg-white/30 transition-all duration-300 overflow-hidden group">
+              <span className="relative z-10 text-center font-semibold text-white">
+                Start
+              </span>
               <span className="absolute inset-0 border-2 border-white/50 rounded-lg"></span>
               <span className="absolute inset-0 border-2 border-white/50 rounded-lg animate-pulse"></span>
               <span className="absolute -inset-1 scale-105 bg-gradient-to-r from-cyan-500/30 via-blue-500/30 to-purple-500 rounded-lg blur-md opacity-50 group-hover:opacity-75 animate-spin-slow animate-bg-move bg-[length:200%_100%] transition-all duration-400"></span>
