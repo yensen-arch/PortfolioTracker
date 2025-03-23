@@ -24,7 +24,9 @@ function App() {
     try {
       setIsLoading(true);
       setError(null);
-      const response = await fetch("https://portfoliotracker-p09f.onrender.com/api/portfolio");
+      const response = await fetch(
+        "https://portfoliotracker-p09f.onrender.com/api/portfolio"
+      );
       if (!response.ok) {
         throw new Error("Failed to fetch portfolio data");
       }
@@ -114,12 +116,6 @@ function App() {
                 Measurement is Progress!
               </span>
             </div>
-            <button
-              onClick={fetchPortfolio}
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
-            >
-              Refresh Data
-            </button>
           </div>
         </div>
       </nav>
@@ -223,19 +219,24 @@ function App() {
         </div>
 
         {/* Clone Portfolio Banner */}
-        <div className="bg-indigo-50 rounded-xl p-6 mb-8">
-          <div className="flex items-center justify-between">
+        <div className="relative overflow-hidden rounded-xl p-6 mb-8 bg-white/10 backdrop-blur-lg border border-white/30 shadow-lg">
+          <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 opacity-80 transition-all duration-500 hover:opacity-100"></div>
+
+          <div className="relative flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-semibold">
+              <h2 className="text-lg font-semibold text-slate-600 drop-shadow-lg">
                 Would you like to have the same portfolio? 🚀
               </h2>
-              <p className="text-gray-600">
+              <p className="text-slate-600 drop-shadow">
                 Sign up, clone target allocations of this portfolio and start
                 following the strategy
               </p>
             </div>
-            <button className="px-6 py-2 bg-white text-gray-800 rounded-lg shadow-sm hover:shadow-md transition-shadow">
-              Start
+            <button className="relative px-6 py-2 bg-white/20 text-white font-semibold rounded-lg shadow-md hover:bg-white/30 transition-all duration-300 overflow-hidden group">
+              <span className="relative z-10 text-sm text-white">Start</span>
+              <span className="absolute inset-0 border-2 border-white/50 rounded-lg"></span>
+              <span className="absolute inset-0 border-2 border-white/50 rounded-lg animate-pulse"></span>
+              <span className="absolute -inset-1 scale-105 bg-gradient-to-r from-cyan-500/30 via-blue-500/30 to-purple-500 rounded-lg blur-md opacity-50 group-hover:opacity-75 animate-spin-slow animate-bg-move bg-[length:200%_100%] transition-all duration-400"></span>
             </button>
           </div>
         </div>
