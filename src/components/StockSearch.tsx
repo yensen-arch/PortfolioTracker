@@ -24,7 +24,7 @@ const StockSearch = ({ onPortfolioUpdate }) => {
       setIsSearching(true);
       setError(null);
       const response = await fetch(
-        `http://localhost:5000/api/stocks/search?query=${searchQuery}`
+        `https://portfoliotracker-p09f.onrender.com/api/stocks/search?query=${searchQuery}`
       );
       if (!response.ok) {
         throw new Error("Failed to search stocks");
@@ -60,7 +60,7 @@ const StockSearch = ({ onPortfolioUpdate }) => {
       setError(null);
 
       const response = await fetch(
-        "http://localhost:5000/api/portfolio/stock",
+        "https://portfoliotracker-p09f.onrender.com/api/portfolio/stock",
         {
           method: "POST",
           headers: {
