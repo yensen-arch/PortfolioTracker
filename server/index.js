@@ -7,7 +7,14 @@ import { Portfolio } from "./models/Portfolio.js";
 dotenv.config();
 
 const app = express();
-app.use(cors());
+app.use(
+  cors({
+    origin: ["https://portfolio-tracker-olive.vercel.app", "http://localhost:5173"],
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true,
+  })
+);
+
 app.use(express.json());
 
 mongoose
@@ -68,23 +75,27 @@ app.get("/api/portfolio", async (req, res) => {
               `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${stock.symbol}&apikey=${process.env.ALPHA_VANTAGE_API_KEY}`
             );
             const quoteData = await quoteResponse.json();
-            
+
             // Get company overview for dividend data
             const overviewResponse = await fetch(
               `https://www.alphavantage.co/query?function=OVERVIEW&symbol=${stock.symbol}&apikey=${process.env.ALPHA_VANTAGE_API_KEY}`
             );
             const overviewData = await overviewResponse.json();
-            
-            const currentPrice = parseFloat(quoteData["Global Quote"]?.["05. price"] || 0);
+
+            const currentPrice = parseFloat(
+              quoteData["Global Quote"]?.["05. price"] || 0
+            );
             const dividendYield = parseFloat(overviewData.DividendYield || 0);
-            const annualDividend = parseFloat(overviewData.DividendPerShare || 0);
-            
+            const annualDividend = parseFloat(
+              overviewData.DividendPerShare || 0
+            );
+
             // Calculate performance metrics
             const stockCurrentValue = currentPrice * stock.shares;
             const stockInitialValue = stock.purchasePrice * stock.shares;
             const profitLoss = stockCurrentValue - stockInitialValue;
             const profitLossPercentage = (profitLoss / stockInitialValue) * 100;
-            
+
             return {
               ...stock.toObject(),
               currentPrice,
@@ -94,30 +105,46 @@ app.get("/api/portfolio", async (req, res) => {
               dividendYield,
               annualDividend,
               annualDividendIncome: annualDividend * stock.shares,
-              lastUpdated: new Date()
+              lastUpdated: new Date(),
             };
           } catch (error) {
-            console.error(`[Error] Failed to fetch data for ${stock.symbol}:`, error);
+            console.error(
+              `[Error] Failed to fetch data for ${stock.symbol}:`,
+              error
+            );
             return stock;
           }
         })
       );
-      
+
       // Calculate totals
-      const totalCurrentValue = enhancedStocks.reduce((total, stock) => 
-        total + (stock.currentValue || 0), 0);
-      const totalInitialValue = enhancedStocks.reduce((total, stock) => 
-        total + (stock.shares * stock.purchasePrice), 0);
+      const totalCurrentValue = enhancedStocks.reduce(
+        (total, stock) => total + (stock.currentValue || 0),
+        0
+      );
+      const totalInitialValue = enhancedStocks.reduce(
+        (total, stock) => total + stock.shares * stock.purchasePrice,
+        0
+      );
       const totalProfitLoss = totalCurrentValue - totalInitialValue;
-      const totalProfitLossPercentage = (totalProfitLoss / totalInitialValue) * 100;
-      const totalAnnualDividend = enhancedStocks.reduce((total, stock) => 
-        total + (stock.annualDividendIncome || 0), 0);
-      const portfolioDividendYield = (totalAnnualDividend / totalCurrentValue) * 100;
-      
+      const totalProfitLossPercentage =
+        (totalProfitLoss / totalInitialValue) * 100;
+      const totalAnnualDividend = enhancedStocks.reduce(
+        (total, stock) => total + (stock.annualDividendIncome || 0),
+        0
+      );
+      const portfolioDividendYield =
+        (totalAnnualDividend / totalCurrentValue) * 100;
+
       // Calculate IRR (Simple approach - can be enhanced with proper time-weighted calculations)
-      const days = Math.max(1, (new Date() - new Date(enhancedStocks[0].purchaseDate)) / (1000 * 60 * 60 * 24));
+      const days = Math.max(
+        1,
+        (new Date() - new Date(enhancedStocks[0].purchaseDate)) /
+          (1000 * 60 * 60 * 24)
+      );
       const years = days / 365;
-      const irr = ((totalCurrentValue / totalInitialValue) ** (1/years) - 1) * 100;
+      const irr =
+        ((totalCurrentValue / totalInitialValue) ** (1 / years) - 1) * 100;
 
       // Create enhanced portfolio response
       const enhancedPortfolio = {
@@ -130,19 +157,19 @@ app.get("/api/portfolio", async (req, res) => {
           totalProfitLossPercentage,
           totalAnnualDividend,
           portfolioDividendYield,
-          irr
-        }
+          irr,
+        },
       };
-      
+
       console.log("[Response] Enhanced portfolio data:", {
         email: enhancedPortfolio.email,
         stockCount: enhancedPortfolio.stocks.length,
         totalValue: totalCurrentValue,
         totalProfit: totalProfitLoss,
         irr: irr,
-        dividendYield: portfolioDividendYield
+        dividendYield: portfolioDividendYield,
       });
-      
+
       res.json(enhancedPortfolio);
     } else {
       res.json({
@@ -154,8 +181,8 @@ app.get("/api/portfolio", async (req, res) => {
           totalProfitLossPercentage: 0,
           totalAnnualDividend: 0,
           portfolioDividendYield: 0,
-          irr: 0
-        }
+          irr: 0,
+        },
       });
     }
   } catch (error) {
@@ -176,34 +203,36 @@ app.get("/api/stocks/search", async (req, res) => {
       `https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keywords=${query}&apikey=${process.env.ALPHA_VANTAGE_API_KEY}`
     );
     const searchData = await searchResponse.json();
-    
+
     // Process results and fetch sector data for each match
     const results = [];
-    
+
     if (searchData.bestMatches && searchData.bestMatches.length > 0) {
       for (const match of searchData.bestMatches) {
         const symbol = match["1. symbol"];
-        
+
         try {
           // Get company overview for sector and dividend information
           const overviewResponse = await fetch(
             `https://www.alphavantage.co/query?function=OVERVIEW&symbol=${symbol}&apikey=${process.env.ALPHA_VANTAGE_API_KEY}`
           );
           const overviewData = await overviewResponse.json();
-          
+
           // Get current price data
           const quoteResponse = await fetch(
             `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${process.env.ALPHA_VANTAGE_API_KEY}`
           );
           const quoteData = await quoteResponse.json();
-          
+
           results.push({
             symbol: symbol,
             name: match["2. name"],
             sector: overviewData.Sector || "Unknown",
-            currentPrice: parseFloat(quoteData["Global Quote"]?.["05. price"] || 0),
+            currentPrice: parseFloat(
+              quoteData["Global Quote"]?.["05. price"] || 0
+            ),
             dividendYield: parseFloat(overviewData.DividendYield || 0),
-            dividendPerShare: parseFloat(overviewData.DividendPerShare || 0)
+            dividendPerShare: parseFloat(overviewData.DividendPerShare || 0),
           });
         } catch (error) {
           console.error(`[Error] Failed to get data for ${symbol}:`, error);
@@ -213,7 +242,7 @@ app.get("/api/stocks/search", async (req, res) => {
             sector: "Unknown",
             currentPrice: 0,
             dividendYield: 0,
-            dividendPerShare: 0
+            dividendPerShare: 0,
           });
         }
       }
@@ -221,7 +250,7 @@ app.get("/api/stocks/search", async (req, res) => {
 
     console.log("[Response] Enhanced search results:", {
       resultCount: results.length,
-      results: results
+      results: results,
     });
 
     res.json({ results });
