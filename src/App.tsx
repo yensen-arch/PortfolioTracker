@@ -54,7 +54,7 @@ function App() {
 
   // Format percentage with sign
   const formatPercentage = (value, includeSign = true) => {
-    const formattedValue = Math.abs(value).toFixed(2);
+    const formattedValue = Math.abs(value).toExponential(2);
     if (!includeSign) return formattedValue;
     return value >= 0 ? `+${formattedValue}` : `-${formattedValue}`;
   };

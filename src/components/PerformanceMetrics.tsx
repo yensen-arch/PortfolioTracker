@@ -70,8 +70,9 @@ const PerformanceMetrics = ({ stocks, summary }) => {
   };
 
   console.log("stocks", stocks, "summary", summary);
-
-  return (
+  console.log(irr.toExponential(2)); // Scientific notation  
+  console.log(irr.toLocaleString('fullwide', { useGrouping: false, maximumFractionDigits: 2 })); // Full number with 2 decimals  
+    return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div className="bg-gray-50 rounded-lg p-3">
@@ -80,7 +81,7 @@ const PerformanceMetrics = ({ stocks, summary }) => {
             <span>IRR</span>
           </div>
           <div className={`text-lg font-semibold ${irr >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-            {formatPercentage(irr)}
+            {`${irr >= 0 ? '+' : ''}${irr.toExponential(2)}%`}
           </div>
           <div className="text-xs text-gray-500">Annualized return</div>
         </div>

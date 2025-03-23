@@ -305,12 +305,12 @@ const StockSearch = ({ onPortfolioUpdate }) => {
             </div>
           )}
 
-          {searchResults.length === 0 && searchQuery && !isSearching && (
+          {/* {searchResults.length === 0 && searchQuery && !isSearching && (
             <div className="text-sm text-gray-500 p-4 bg-gray-50 rounded-md">
               No stocks found matching "{searchQuery}". Try a different search
               term.
             </div>
-          )}
+          )} */}
         </div>
       )}
     </div>

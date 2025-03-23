@@ -6,6 +6,10 @@ import { Portfolio } from "./models/Portfolio.js";
 
 dotenv.config();
 
+// Polygon.io API Key
+const POLYGON_API_KEY = "OJcTHycytiBAAPJqResIfz5FTVM92r7f";
+const POLYGON_BASE_URL = "https://api.polygon.io";
+
 const app = express();
 app.use(
   cors({
@@ -47,6 +51,67 @@ const initializeDefaultUser = async () => {
   }
 };
 
+// Get current stock price from Polygon.io
+const getCurrentPrice = async (symbol) => {
+  try {
+    const response = await fetch(
+      `${POLYGON_BASE_URL}/v2/aggs/ticker/${symbol}/prev?adjusted=true&apiKey=${POLYGON_API_KEY}`
+    );
+    const data = await response.json();
+    
+    if (data.results && data.results.length > 0) {
+      return data.results[0].c; // Closing price
+    }
+    return 0;
+  } catch (error) {
+    console.error(`Failed to get price for ${symbol}:`, error);
+    return 0;
+  }
+};
+
+// Get company details including dividend information from Polygon.io
+const getCompanyDetails = async (symbol) => {
+  try {
+    // Get ticker details
+    const tickerDetailsResponse = await fetch(
+      `${POLYGON_BASE_URL}/v3/reference/tickers/${symbol}?apiKey=${POLYGON_API_KEY}`
+    );
+    const tickerData = await tickerDetailsResponse.json();
+    
+    // Get dividend information
+    const dividendsResponse = await fetch(
+      `${POLYGON_BASE_URL}/v3/reference/dividends?ticker=${symbol}&limit=1&apiKey=${POLYGON_API_KEY}`
+    );
+    const dividendData = await dividendsResponse.json();
+    
+    const sector = tickerData.results?.sic_description || "Unknown";
+    let dividendYield = 0;
+    let dividendPerShare = 0;
+    
+    // Calculate dividend yield if available
+    if (dividendData.results && dividendData.results.length > 0 && dividendData.results[0].cash_amount) {
+      const currentPrice = await getCurrentPrice(symbol);
+      dividendPerShare = dividendData.results[0].cash_amount;
+      // Assuming quarterly dividend payments (multiply by 4 for annual)
+      const annualDividend = dividendPerShare * 4;
+      dividendYield = currentPrice > 0 ? (annualDividend / currentPrice) * 100 : 0;
+    }
+    
+    return {
+      sector,
+      dividendYield,
+      dividendPerShare
+    };
+  } catch (error) {
+    console.error(`Failed to get company details for ${symbol}:`, error);
+    return {
+      sector: "Unknown",
+      dividendYield: 0,
+      dividendPerShare: 0
+    };
+  }
+};
+
 // Get user portfolio with current values
 app.get("/api/portfolio", async (req, res) => {
   try {
@@ -70,32 +135,19 @@ app.get("/api/portfolio", async (req, res) => {
       const enhancedStocks = await Promise.all(
         portfolio.stocks.map(async (stock) => {
           try {
-            // Get current price data
-            const quoteResponse = await fetch(
-              `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${stock.symbol}&apikey=${process.env.ALPHA_VANTAGE_API_KEY}`
-            );
-            const quoteData = await quoteResponse.json();
-            console.log("quoteData", quoteData);
-            // Get company overview for dividend data
-            const overviewResponse = await fetch(
-              `https://www.alphavantage.co/query?function=OVERVIEW&symbol=${stock.symbol}&apikey=${process.env.ALPHA_VANTAGE_API_KEY}`
-            );
-            const overviewData = await overviewResponse.json();
-            console.log("overviewdata", overviewData);
-
-            const currentPrice = parseFloat(
-              quoteData["Global Quote"]?.["05. price"] || 0
-            );
-            const dividendYield = parseFloat(overviewData.DividendYield || 0);
-            const annualDividend = parseFloat(
-              overviewData.DividendPerShare || 0
-            );
-
+            // Get current price using Polygon.io
+            const currentPrice = await getCurrentPrice(stock.symbol);
+            
+            // Get company details using Polygon.io
+            const companyDetails = await getCompanyDetails(stock.symbol);
+            const { sector, dividendYield, dividendPerShare } = companyDetails;
+            
             // Calculate performance metrics
             const stockCurrentValue = currentPrice * stock.shares;
             const stockInitialValue = stock.purchasePrice * stock.shares;
             const profitLoss = stockCurrentValue - stockInitialValue;
-            const profitLossPercentage = (profitLoss / stockInitialValue) * 100;
+            const profitLossPercentage = stockInitialValue > 0 ? (profitLoss / stockInitialValue) * 100 : 0;
+            const annualDividend = dividendPerShare * 4; // Assuming quarterly dividends
 
             return {
               ...stock.toObject(),
@@ -107,6 +159,7 @@ app.get("/api/portfolio", async (req, res) => {
               annualDividend,
               annualDividendIncome: annualDividend * stock.shares,
               lastUpdated: new Date(),
+              sector: sector || stock.sector,
             };
           } catch (error) {
             console.error(
@@ -128,14 +181,14 @@ app.get("/api/portfolio", async (req, res) => {
         0
       );
       const totalProfitLoss = totalCurrentValue - totalInitialValue;
-      const totalProfitLossPercentage =
-        (totalProfitLoss / totalInitialValue) * 100;
+      const totalProfitLossPercentage = totalInitialValue > 0 ?
+        (totalProfitLoss / totalInitialValue) * 100 : 0;
       const totalAnnualDividend = enhancedStocks.reduce(
         (total, stock) => total + (stock.annualDividendIncome || 0),
         0
       );
-      const portfolioDividendYield =
-        (totalAnnualDividend / totalCurrentValue) * 100;
+      const portfolioDividendYield = totalCurrentValue > 0 ?
+        (totalAnnualDividend / totalCurrentValue) * 100 : 0;
 
       // Calculate IRR (Simple approach - can be enhanced with proper time-weighted calculations)
       const days = Math.max(
@@ -144,8 +197,8 @@ app.get("/api/portfolio", async (req, res) => {
           (1000 * 60 * 60 * 24)
       );
       const years = days / 365;
-      const irr =
-        ((totalCurrentValue / totalInitialValue) ** (1 / years) - 1) * 100;
+      const irr = totalInitialValue > 0 ?
+        ((totalCurrentValue / totalInitialValue) ** (1 / years) - 1) * 100 : 0;
 
       // Create enhanced portfolio response
       const enhancedPortfolio = {
@@ -192,54 +245,46 @@ app.get("/api/portfolio", async (req, res) => {
   }
 });
 
-// Add stock to portfolio
+// Search for stocks using Polygon.io
 app.get("/api/stocks/search", async (req, res) => {
   try {
     const { query } = req.query;
     console.log("\n[GET] /api/stocks/search");
     console.log("[Request] Search query:", query);
 
-    // Get symbol matches
+    // Search tickers with Polygon.io
     const searchResponse = await fetch(
-      `https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keywords=${query}&apikey=${process.env.ALPHA_VANTAGE_API_KEY}`
+      `${POLYGON_BASE_URL}/v3/reference/tickers?search=${query}&active=true&limit=10&apiKey=${POLYGON_API_KEY}`
     );
     const searchData = await searchResponse.json();
 
-    // Process results and fetch sector data for each match
+    // Process results and fetch additional data for each match
     const results = [];
 
-    if (searchData.bestMatches && searchData.bestMatches.length > 0) {
-      for (const match of searchData.bestMatches) {
-        const symbol = match["1. symbol"];
+    if (searchData.results && searchData.results.length > 0) {
+      for (const match of searchData.results) {
+        const symbol = match.ticker;
 
         try {
-          // Get company overview for sector and dividend information
-          const overviewResponse = await fetch(
-            `https://www.alphavantage.co/query?function=OVERVIEW&symbol=${symbol}&apikey=${process.env.ALPHA_VANTAGE_API_KEY}`
-          );
-          const overviewData = await overviewResponse.json();
-
-          // Get current price data
-          const quoteResponse = await fetch(
-            `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${process.env.ALPHA_VANTAGE_API_KEY}`
-          );
-          const quoteData = await quoteResponse.json();
+          // Get current price
+          const currentPrice = await getCurrentPrice(symbol);
+          
+          // Get company details
+          const { sector, dividendYield, dividendPerShare } = await getCompanyDetails(symbol);
 
           results.push({
-            symbol: symbol,
-            name: match["2. name"],
-            sector: overviewData.Sector || "Unknown",
-            currentPrice: parseFloat(
-              quoteData["Global Quote"]?.["05. price"] || 0
-            ),
-            dividendYield: parseFloat(overviewData.DividendYield || 0),
-            dividendPerShare: parseFloat(overviewData.DividendPerShare || 0),
+            symbol,
+            name: match.name,
+            sector,
+            currentPrice,
+            dividendYield,
+            dividendPerShare,
           });
         } catch (error) {
           console.error(`[Error] Failed to get data for ${symbol}:`, error);
           results.push({
-            symbol: symbol,
-            name: match["2. name"],
+            symbol,
+            name: match.name,
             sector: "Unknown",
             currentPrice: 0,
             dividendYield: 0,
@@ -296,4 +341,5 @@ app.listen(5000, () => {
   console.log("   GET  /api/portfolio");
   console.log("   POST /api/portfolio/stock");
   console.log("   GET  /api/stocks/search\n");
+  console.log("Data provider: Polygon.io");
 });
