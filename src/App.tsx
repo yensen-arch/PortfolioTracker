@@ -24,7 +24,7 @@ function App() {
     try {
       setIsLoading(true);
       setError(null);
-      const response = await fetch("http://portfoliotracker-p09f.onrender.com/api/portfolio");
+      const response = await fetch("https://portfoliotracker-p09f.onrender.com/api/portfolio");
       if (!response.ok) {
         throw new Error("Failed to fetch portfolio data");
       }
