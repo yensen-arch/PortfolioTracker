@@ -75,12 +75,13 @@ app.get("/api/portfolio", async (req, res) => {
               `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${stock.symbol}&apikey=${process.env.ALPHA_VANTAGE_API_KEY}`
             );
             const quoteData = await quoteResponse.json();
-
+            console.log("quoteData", quoteData);
             // Get company overview for dividend data
             const overviewResponse = await fetch(
               `https://www.alphavantage.co/query?function=OVERVIEW&symbol=${stock.symbol}&apikey=${process.env.ALPHA_VANTAGE_API_KEY}`
             );
             const overviewData = await overviewResponse.json();
+            console.log("overviewdata", overviewData);
 
             const currentPrice = parseFloat(
               quoteData["Global Quote"]?.["05. price"] || 0
